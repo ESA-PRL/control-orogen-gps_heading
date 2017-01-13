@@ -1,0 +1,20 @@
+name "gps_heading"
+
+import_types_from "base"
+import_types_from "gps_headingTypes.hpp"
+
+task_context "Task" do
+    needs_configuration
+    
+    property('minimumDistanceHeading', 'double', 0.2).
+        doc('Minimum distance in meters to travel between heading outputs')
+
+    # Get the GPS to evaluate the heading from multiple position readings
+    input_port "gps", "/base/samples/RigidBodyState"
+
+    # Output rover pose
+    output_port "heading", "/base/samples/RigidBodyState"
+    
+    port_driven
+end
+
