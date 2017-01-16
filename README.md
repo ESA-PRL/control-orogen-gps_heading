@@ -4,9 +4,9 @@
 
 This component takes in GPS readings and outputs the same GPS readings with a heading orientation (yaw) evaluated from two GPS readings, spaced by a user defined distance. Other orientation angles are canceled.
 
-![GPS heading evaluating heading from current and previous GPS readings](gps_heading.png "GPS heading")
+It is useful to get a rough estimate of the heading in absence of other absolute sensors. The component publishes GPS data as often as the GPS input, but the heading orientation (yaw) will only be updated every `minimumDistanceHeading` meters.
 
-It is useful to get a rough estimate of the heading in absence of other absolute sensors. The component will however publish GPS data less often than the GPS component itself because of the minimum travel distance constraint.
+![GPS heading evaluating heading from current and previous GPS readings](gps_heading.png "GPS heading")
 
 A python script under `/test` has been made to test the output of this component. Use `gps_replay.rb` to get the `gps_heading` data log file, then `pocolog` to delog the generated data and finally export the data and process it to fit for the python script.
 
@@ -51,5 +51,5 @@ GPS positions with filtered orientation based on two GPS readings, spaced by `mi
 
 * **`minimumDistanceHeading`** (/double)
 
-Minimum distance to travel between publishings (in meters).
+Minimum distance to travel between yaw updates (in meters).
 

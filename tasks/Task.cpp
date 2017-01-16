@@ -63,15 +63,15 @@ void Task::updateHook()
             // Rotate the yaw angle by the heading evaluated before
             orientation = Eigen::AngleAxisd(heading_angle, Eigen::Vector3d::UnitZ()) * orientation;
             
-            // Overwrite the GPS orientation with only the heading info
-            gps.orientation = orientation;
-            
-            // Publish the heading
-            _heading.write(gps);
-            
             // Save the last published GPS position
             last_published_position = gps;
         }
+        
+        // Overwrite the GPS orientation with only the heading info
+        gps.orientation = orientation;
+        
+        // Publish the GPS data with corrected orientation
+        _heading.write(gps);
     }
 }
 
