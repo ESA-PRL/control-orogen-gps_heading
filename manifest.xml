@@ -1,0 +1,17 @@
+<package>
+  <description brief="IMU-based AHRS with GPS corrections.">
+  IMU-based attitude-heading estimation with GPS-based correction through a complementary filter.
+  </description>
+  <author>Jan Filip/jan.filip2@gmail.com, jan.filip@esa.int</author>
+  <license></license>
+  <url>http://https://github.com/hdpr-rover</url>
+  <logo>http://</logo>
+  <depend package="base/cmake" />
+  <!--
+   To add any dependencies use the depend tag
+  <depend package="dummy-dependency-0" />
+	...
+  <depend package="dummy-dependency-n-1" />
+  <depend package="dummy-dependency-n" />
+  -->
+</package>

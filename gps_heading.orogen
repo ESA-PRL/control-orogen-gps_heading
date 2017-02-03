@@ -1,0 +1,36 @@
+name "gps_heading"
+# version "0.1"
+
+import_types_from "base"
+
+task_context "Task" do
+    needs_configuration
+
+    # - - - PROPERTIES - - - 
+    property('alpha','double')
+        doc 'Complementary filter weight'
+
+	property('dist_min','double')
+        doc 'Minimum distance travelled for GPS-based heading estimation'
+
+	# - - - INPUT PORTS - - - 
+    input_port("motion_command", "base/MotionCommand2D").
+        doc 'Motionc command to Locomotion Control'
+
+    input_port('imu_pose_samples', '/base/samples/RigidBodyState').
+        doc 'Uncompensated input pose of the IMU'
+
+    input_port('gps_pose_samples', '/base/samples/RigidBodyState').
+        doc 'Input pose of the GPS antenna.'
+
+	# - - - OUTPUT PORTS - - - 
+    output_port('pose_samples_out', '/base/samples/RigidBodyState').
+        doc 'Output pose'
+
+    # - - - OUTPUT PORTS - - - 
+    output_port('heading_drift', 'double').
+        doc 'Estimated dright of the heading'
+
+    port_driven 'gps_pose_samples'
+end
+
