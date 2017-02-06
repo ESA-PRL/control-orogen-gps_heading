@@ -23,7 +23,7 @@ Orocos::Process.run 'gps_heading::Task' => 'gps_heading' do
     # Connect the tasks to the logs
     log_replay = Orocos::Log::Replay.open(ARGV[0])
 
-    log_replay.gnss_trimble.pose_samples.connect_to gps_heading.gps
+    log_replay.gps.pose_samples.connect_to gps_heading.gps
 
     # Log the component output
     gps_heading.log_all_ports
