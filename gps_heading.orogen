@@ -30,6 +30,8 @@ task_context "Task" do
     # - - - OUTPUT PORTS - - - 
     output_port('heading_drift', 'double').
         doc 'Estimated dright of the heading'
+        
+    runtime_states :CALIBRATING
 
     port_driven 'gps_pose_samples'
 end

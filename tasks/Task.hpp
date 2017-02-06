@@ -39,7 +39,7 @@ namespace gps_heading {
         base::samples::RigidBodyState gps_pose, gps_pose_prev;
         base::samples::RigidBodyState imu_pose;
         double yawCompensated, yawImuPrev, dist_min;
-        bool imu_initialized, gps_initialized, gps_new_sample, driving_forward;
+        bool imu_initialized, gps_initialized, gps_new_sample, driving_forward, calibrated;
         base::MotionCommand2D motion_command;
 
         double deltaHeading(double yaw, double yaw_prev);
@@ -49,7 +49,7 @@ namespace gps_heading {
         
         Task(std::string const& name = "gps_heading::Task");
         Task(std::string const& name, RTT::ExecutionEngine* engine);
-	~Task();
+        ~Task();
         bool configureHook();
         bool startHook();    
         void updateHook();
