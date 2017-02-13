@@ -7,10 +7,10 @@ task_context "Task" do
     needs_configuration
 
     # - - - PROPERTIES - - - 
-    property('alpha','double')
+    property('alpha', 'double', 0.15).
         doc 'Complementary filter weight'
 
-	property('dist_min','double')
+	property('dist_min', 'double', 0.2).
         doc 'Minimum distance travelled for GPS-based heading estimation'
 
 	# - - - INPUT PORTS - - - 
