@@ -56,6 +56,8 @@ bool Task::configureHook()
     driving_forward = false;
     dist_min  = _dist_min.value();
     dist_min *=  dist_min; // Squared
+    calibration_dist_min = _calibration_dist_min.value();
+    calibration_dist_min *= calibration_dist_min; // Squared
     return true;
 }
 bool Task::startHook()
@@ -155,7 +157,11 @@ void Task::updateHook()
             // 0) Calibrate yaw value using GPS only for the first yaw value
             // 1) Estimate the heading from GPS
             // 2) Compensate the heading estimate
-            if(deltaPos.squaredNorm() > dist_min)
+            // WARNING: the dist_min is quared here, so comparing it to squaredNorm is OK
+            if(
+                (calibrated && deltaPos.squaredNorm() > dist_min) ||
+                (!calibrated && deltaPos.squaredNorm() > calibration_dist_min)
+            )
             {
                 double yawGps = atan2(deltaPos.y(), deltaPos.x());
                 
@@ -167,6 +173,7 @@ void Task::updateHook()
                 }
                 else
                 {
+                    // Complementary filter
                     double alpha = _alpha.value();
                     
                     // Difference between current compensated estimate and new GPS-based heading
@@ -204,6 +211,11 @@ void Task::updateHook()
         // TODO: here the position of the antenna could be roll/pitch compensated
         resulting_pose.position = gps_pose.position;
 
+        if(!calibrated)
+        {
+            yawCompensated = M_PI / 2;
+        }
+        
         resulting_pose.orientation = Eigen::Quaterniond( 
             Eigen::AngleAxisd(wrapAngle(yawCompensated), Eigen::Vector3d::UnitZ())*
             Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY())*

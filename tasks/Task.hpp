@@ -38,7 +38,7 @@ namespace gps_heading {
     protected:
         base::samples::RigidBodyState gps_pose, gps_pose_prev;
         base::samples::RigidBodyState imu_pose;
-        double yawCompensated, yawImuPrev, dist_min;
+        double yawCompensated, yawImuPrev, dist_min, calibration_dist_min;
         bool imu_initialized, gps_initialized, gps_new_sample, driving_forward, calibrated;
         base::MotionCommand2D motion_command;
 

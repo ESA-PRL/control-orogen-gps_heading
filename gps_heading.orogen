@@ -11,7 +11,10 @@ task_context "Task" do
         doc 'Complementary filter weight'
 
 	property('dist_min', 'double', 0.2).
-        doc 'Minimum distance travelled for GPS-based heading estimation'
+        doc 'Minimum distance to travel for GPS-based heading estimation'
+
+	property('calibration_dist_min', 'double', 1.0).
+        doc 'Minimum distance to travel for the first headning estimation (calibration), should be higher than dist_min'
 
 	# - - - INPUT PORTS - - - 
     input_port("motion_command", "base/MotionCommand2D").
