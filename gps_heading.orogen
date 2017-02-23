@@ -14,7 +14,7 @@ task_context "Task" do
         doc 'Minimum distance to travel for GPS-based heading estimation'
 
 	property('calibration_dist_min', 'double', 1.0).
-        doc 'Minimum distance to travel for the first headning estimation (calibration), should be higher than dist_min'
+        doc 'Minimum distance to travel for the first heading estimation (calibration), should be higher than dist_min'
 
 	# - - - INPUT PORTS - - - 
     input_port("motion_command", "base/MotionCommand2D").
@@ -32,7 +32,7 @@ task_context "Task" do
 
     # - - - OUTPUT PORTS - - - 
     output_port('heading_drift', 'double').
-        doc 'Estimated dright of the heading'
+        doc 'Estimated drift of the heading'
         
     runtime_states :CALIBRATING
 
