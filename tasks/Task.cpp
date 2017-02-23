@@ -204,6 +204,7 @@ void Task::updateHook()
 
         // Output pose estimate
         base::samples::RigidBodyState resulting_pose;
+        resulting_pose.time = gps_pose.time;
         double roll, pitch;
         roll    = imu_pose.getRoll();
         pitch   = imu_pose.getPitch();
