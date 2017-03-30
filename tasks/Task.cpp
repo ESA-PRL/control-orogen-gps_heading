@@ -58,6 +58,7 @@ bool Task::configureHook()
     dist_min *=  dist_min; // Squared
     calibration_dist_min = _calibration_dist_min.value();
     calibration_dist_min *= calibration_dist_min; // Squared
+    gps_fix = false;
     return true;
 }
 bool Task::startHook()
@@ -71,26 +72,37 @@ bool Task::startHook()
 void Task::updateHook()
 {
     TaskBase::updateHook();
-    
+
+    //----- Read new inputs -----
+    gnss_trimble::Solution gps_raw_data;
+    if(_gps_raw_data.readNewest(gps_raw_data) == RTT::NewData)
+    {
+        gps_fix = (gps_raw_data.positionType == gnss_trimble::RTK_FIXED);
+    }
+
     //----- Calibration state swiching routine -----
-    if(!calibrated)
+    if(!gps_fix)
+    {
+        if(state() != NO_GPS_FIX)
+        {
+            state(NO_GPS_FIX);
+        }
+    }
+    else if(!calibrated && gps_fix)
     {
         if(state() != CALIBRATING)
         {
             state(CALIBRATING);
         }
     }
-    else if(calibrated && state() == CALIBRATING)
+    else if(calibrated && state() != RUNNING)
     {
         // Once calibrated switch to running state
         state(RUNNING);
     }
-    
-    //----- Read new inputs -----
-    int rtt_return;
+
     base::samples::RigidBodyState pose;
-    rtt_return = _imu_pose_samples.readNewest(pose);
-    if(rtt_return == RTT::NewData && rtt_return != RTT::NoData)
+    if(_imu_pose_samples.readNewest(pose) == RTT::NewData)
     {
         imu_pose = pose;
         if(!imu_initialized)
@@ -100,8 +112,8 @@ void Task::updateHook()
             imu_initialized = true;
         }
     }
-    rtt_return = _gps_pose_samples.readNewest(pose);
-    if(rtt_return == RTT::NewData && rtt_return != RTT::NoData)
+
+    if(_gps_pose_samples.readNewest(pose) == RTT::NewData)
     {
         gps_pose = pose;
         gps_new_sample = true;
@@ -121,11 +133,11 @@ void Task::updateHook()
             // Make sure the rover is moving forwards, translation is 0.0 when doing a point turn
             // also only check for positive forwards motion as backwards would make the code unnecessarily complicated
             driving_forward = motion_command.translation > 0.01;
-        } 
+        }
     }
     else
     {
-        // Without motion command input, the GPS compensation is attempted 
+        // Without motion command input, the GPS compensation is attempted
         // regardless of the type of the motion
         driving_forward = true;
     }
@@ -140,14 +152,14 @@ void Task::updateHook()
     {
         double deltaYaw, yawImu;
         yawImu = imu_pose.getYaw();
-        deltaYaw = deltaHeading(yawImu, yawImuPrev); 
+        deltaYaw = deltaHeading(yawImu, yawImuPrev);
         yawImuPrev = yawImu;
 
         // Prediction step, integration of delta Yaw
-        yawCompensated += deltaYaw;     
+        yawCompensated += deltaYaw;
 
         // Compensation step
-        if(driving_forward)
+        if(driving_forward && gps_fix)
         {
             Eigen::Vector3d deltaPos = gps_pose.position - gps_pose_prev.position;
             // Ignore vertical distance delta
@@ -158,36 +170,38 @@ void Task::updateHook()
             // 1) Estimate the heading from GPS
             // 2) Compensate the heading estimate
             // WARNING: the dist_min is quared here, so comparing it to squaredNorm is OK
-            if(
-                (calibrated && deltaPos.squaredNorm() > dist_min) ||
-                (!calibrated && deltaPos.squaredNorm() > calibration_dist_min)
-            )
+            if((calibrated && deltaPos.squaredNorm() > dist_min) || (!calibrated && deltaPos.squaredNorm() > calibration_dist_min))
             {
+                // Get the yaw value from between 2 gps poses
                 double yawGps = atan2(deltaPos.y(), deltaPos.x());
-                
+
                 if(!calibrated)
                 {
-                    // The first yaw will be 100% GPS based to calibrate the initial value
+                    // The first yaw output will be 100% GPS based to calibrate the initial value
                     yawCompensated = yawGps;
                     calibrated = true;
+                }
+                else if(false)
+                {
+                    // If the GPS reports non-fixed positions do not use GPS to compensate
                 }
                 else
                 {
                     // Complementary filter
                     double alpha = _alpha.value();
-                    
+
                     // Difference between current compensated estimate and new GPS-based heading
                     deltaYaw = deltaHeading(yawGps, yawCompensated);
-                    
-                    // yawCompensated = alpha*(yawCompensated+deltaYaw) + (1-alpha)*(yawCompensated); 
+
+                    // yawCompensated = alpha*(yawCompensated+deltaYaw) + (1-alpha)*(yawCompensated);
                     // Complementary filter equation simplified to:
                     yawCompensated = yawCompensated + alpha*deltaYaw;
                 }
-                
+
                 // Save the new "previous" GPS position
                 gps_pose_prev = gps_pose;
 
-                // Heading drift debug output 
+                // Heading drift debug output
                 double heading_drift;
                 heading_drift = deltaHeading(yawImu, wrapAngle(yawCompensated));
                 heading_drift *= 180.0/M_PI;
@@ -214,13 +228,14 @@ void Task::updateHook()
 
         if(!calibrated)
         {
+            // Add a 90 degree offset to point towards north when not calibrated
             yawCompensated = M_PI / 2;
         }
-        
-        resulting_pose.orientation = Eigen::Quaterniond( 
+
+        resulting_pose.orientation = Eigen::Quaterniond(
             Eigen::AngleAxisd(wrapAngle(yawCompensated), Eigen::Vector3d::UnitZ())*
             Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY())*
-            Eigen::AngleAxisd(roll,  Eigen::Vector3d::UnitX()));    
+            Eigen::AngleAxisd(roll,  Eigen::Vector3d::UnitX()));
         _pose_samples_out.write(resulting_pose);
         gps_new_sample = false;
     }
@@ -241,7 +256,7 @@ void Task::cleanupHook()
     TaskBase::cleanupHook();
 }
 
-// Maintains the unwrapped heading so that it can be 
+// Maintains the unwrapped heading so that it can be
 // low-pass filtered even during +- PI transitions
 double Task::deltaHeading(double yaw, double yaw_prev)
 {
@@ -258,7 +273,7 @@ inline double Task::wrapAngle(double angle)
     {
         double intp;
         const double side = copysign(M_PI,angle);
-        angle = -side + 2*M_PI * modf( (angle-side) / (2*M_PI), &intp ); 
+        angle = -side + 2*M_PI * modf( (angle-side) / (2*M_PI), &intp );
     }
     return angle;
 }

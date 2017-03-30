@@ -1,42 +1,26 @@
-name "gps_heading"
+  name "gps_heading"
 
-# version "0.1"
+using_library "gnss_trimble"
 
 import_types_from "base"
+import_types_from "gnss_trimble/GNSSTypes.hpp"
 
 task_context "Task" do
     needs_configuration
 
-    # - - - PROPERTIES - - - 
-    property('alpha', 'double', 0.15).
-        doc 'Complementary filter weight'
+    property("alpha", "double", 0.15).doc("Complementary filter weight")
+    property("dist_min", "double", 0.2).doc("Minimum distance to travel for GPS-based heading estimation")
+    property("calibration_dist_min", "double", 1.0).doc("Minimum distance to travel for the first heading estimation (calibration), should be higher than dist_min")
 
-	property('dist_min', 'double', 0.2).
-        doc 'Minimum distance to travel for GPS-based heading estimation'
+    input_port("motion_command", "base/MotionCommand2D").doc("Motionc command to Locomotion Control")
+    input_port("imu_pose_samples", "/base/samples/RigidBodyState").doc("Uncompensated input pose of the IMU")
+    input_port("gps_pose_samples", "/base/samples/RigidBodyState").doc("Input pose of the GPS antenna.")
+    input_port("gps_raw_data", "/gnss_trimble/Solution").doc("Raw value of GNSS/NMEA data.")
 
-	property('calibration_dist_min', 'double', 1.0).
-        doc 'Minimum distance to travel for the first heading estimation (calibration), should be higher than dist_min'
+    output_port("pose_samples_out", "/base/samples/RigidBodyState").doc("Output pose")
+    output_port("heading_drift", "double").doc("Estimated drift of the heading")
 
-	# - - - INPUT PORTS - - - 
-    input_port("motion_command", "base/MotionCommand2D").
-        doc 'Motionc command to Locomotion Control'
+    runtime_states :CALIBRATING, :NO_GPS_FIX
 
-    input_port('imu_pose_samples', '/base/samples/RigidBodyState').
-        doc 'Uncompensated input pose of the IMU'
-
-    input_port('gps_pose_samples', '/base/samples/RigidBodyState').
-        doc 'Input pose of the GPS antenna.'
-
-	# - - - OUTPUT PORTS - - - 
-    output_port('pose_samples_out', '/base/samples/RigidBodyState').
-        doc 'Output pose'
-
-    # - - - OUTPUT PORTS - - - 
-    output_port('heading_drift', 'double').
-        doc 'Estimated drift of the heading'
-        
-    runtime_states :CALIBRATING
-
-    port_driven 'gps_pose_samples'
+    port_driven "gps_pose_samples"
 end
-

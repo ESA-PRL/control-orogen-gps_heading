@@ -31,7 +31,7 @@
 
 namespace gps_heading {
 
-   
+
     class Task : public TaskBase
     {
 	friend class TaskBase;
@@ -41,17 +41,18 @@ namespace gps_heading {
         double yawCompensated, yawImuPrev, dist_min, calibration_dist_min;
         bool imu_initialized, gps_initialized, gps_new_sample, driving_forward, calibrated;
         base::MotionCommand2D motion_command;
+        bool gps_fix;
 
         double deltaHeading(double yaw, double yaw_prev);
         inline double wrapAngle(double angle);
 
     public:
-        
+
         Task(std::string const& name = "gps_heading::Task");
         Task(std::string const& name, RTT::ExecutionEngine* engine);
         ~Task();
         bool configureHook();
-        bool startHook();    
+        bool startHook();
         void updateHook();
         void errorHook();
         void stopHook();
@@ -60,4 +61,3 @@ namespace gps_heading {
 }
 
 #endif
-
