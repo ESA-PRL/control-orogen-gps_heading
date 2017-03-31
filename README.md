@@ -73,3 +73,12 @@ Minimum distance to travel between yaw updates (in meters).
 
 Minimum distance to travel for the first heading estimation (calibration), should be higher than `dist_min`.
 
+* **`offset`** (/base/Vector3d)
+
+GPS position offset (x, y, z) with regards to the platform it is mounted on. `Vector3d` format must be set in the configuration file as follows:
+
+    offset:
+      data:
+        - 0.6
+        - 0
+        - -0.2

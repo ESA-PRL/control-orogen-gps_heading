@@ -42,6 +42,7 @@ namespace gps_heading {
         bool imu_initialized, gps_initialized, gps_new_sample, driving_forward, calibrated;
         base::MotionCommand2D motion_command;
         bool gps_fix;
+        base::Vector3d gps_offset;
 
         double deltaHeading(double yaw, double yaw_prev);
         inline double wrapAngle(double angle);

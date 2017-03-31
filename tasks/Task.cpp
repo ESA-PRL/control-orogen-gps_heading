@@ -59,6 +59,7 @@ bool Task::configureHook()
     calibration_dist_min = _calibration_dist_min.value();
     calibration_dist_min *= calibration_dist_min; // Squared
     gps_fix = false;
+    gps_offset = _offset.value();
     return true;
 }
 bool Task::startHook()
@@ -227,11 +228,19 @@ void Task::updateHook()
             // Add a 90 degree offset to point towards north when not calibrated
             yawCompensated = M_PI / 2;
         }
+        else
+        {
+            // Add the GPS position offset configuration
+            resulting_pose.position.x() += gps_offset(0) * cos(yawCompensated) - gps_offset(1) * sin(yawCompensated);
+            resulting_pose.position.y() += gps_offset(0) * sin(yawCompensated) + gps_offset(1) * cos(yawCompensated);
+            resulting_pose.position.z() += gps_offset(2);
+        }
 
         resulting_pose.orientation = Eigen::Quaterniond(
             Eigen::AngleAxisd(wrapAngle(yawCompensated), Eigen::Vector3d::UnitZ())*
             Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY())*
             Eigen::AngleAxisd(roll,  Eigen::Vector3d::UnitX()));
+
         _pose_samples_out.write(resulting_pose);
         gps_new_sample = false;
     }

@@ -1,4 +1,6 @@
-  name "gps_heading"
+#!/usr/bin/env ruby
+
+name "gps_heading"
 
 using_library "gnss_trimble"
 
@@ -11,6 +13,7 @@ task_context "Task" do
     property("alpha", "double", 0.15).doc("Complementary filter weight")
     property("dist_min", "double", 0.2).doc("Minimum distance to travel for GPS-based heading estimation")
     property("calibration_dist_min", "double", 1.0).doc("Minimum distance to travel for the first heading estimation (calibration), should be higher than dist_min")
+    property("offset", "/base/Vector3d").doc("GPS position offset with regards to the platform it is mounted on.")
 
     input_port("motion_command", "base/MotionCommand2D").doc("Motionc command to Locomotion Control")
     input_port("imu_pose_samples", "/base/samples/RigidBodyState").doc("Uncompensated input pose of the IMU")
