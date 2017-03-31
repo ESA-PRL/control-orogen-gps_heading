@@ -158,7 +158,7 @@ void Task::updateHook()
         // Prediction step, integration of delta Yaw
         yawCompensated += deltaYaw;
 
-        // Compensation step
+        // Compensation step using GPS readings, only used when driving forward and GPS had an RTK fix
         if(driving_forward && gps_fix)
         {
             Eigen::Vector3d deltaPos = gps_pose.position - gps_pose_prev.position;
@@ -181,10 +181,6 @@ void Task::updateHook()
                     yawCompensated = yawGps;
                     calibrated = true;
                 }
-                else if(false)
-                {
-                    // If the GPS reports non-fixed positions do not use GPS to compensate
-                }
                 else
                 {
                     // Complementary filter
@@ -206,7 +202,7 @@ void Task::updateHook()
                 heading_drift = deltaHeading(yawImu, wrapAngle(yawCompensated));
                 heading_drift *= 180.0/M_PI;
                 _heading_drift.write(heading_drift);
-                std::cout << "Estimated heading drift: " << heading_drift << "deg." << std::endl;
+                //std::cout << "Estimated heading drift: " << heading_drift << "deg." << std::endl;
             }
         }
         else
