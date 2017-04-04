@@ -160,7 +160,9 @@ void Task::updateHook()
         yawCompensated += deltaYaw;
 
         // Compensation step using GPS readings, only used when driving forward and GPS had an RTK fix
-        if(driving_forward && gps_fix)
+        // During calibration (heading setting) one can stop the rover, but (should) not turn it
+        // This is a special case for the one stops with the rover during initialisation, otherwise it will reset the starting position
+        if((driving_forward && gps_fix) || (!driving_forward && gps_fix && !calibrated))
         {
             Eigen::Vector3d deltaPos = gps_pose.position - gps_pose_prev.position;
             // Ignore vertical distance delta
