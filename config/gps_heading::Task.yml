@@ -1,5 +1,0 @@
---- name:default
-# Complementary filter weight (amount of GSP compensation)
-alpha: 0.15
-# Minimum distance travelled for GPS-based heading estimation
-dist_min: 0.40

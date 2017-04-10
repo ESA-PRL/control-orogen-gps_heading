@@ -4,7 +4,7 @@
 
 This component takes in GPS readings, gyroscope and rover motion commands and outputs a fused (via a complementary filter) heading value between two GPS readings and the gyroscope. Other orientation angles are canceled (pitch, roll).
 
-It is useful to get a rough estimate of the heading in absence of absolute sensors. The component publishes GPS data as often as the GPS input, but the heading orientation (yaw) will only be updated every `dist_min` meters.
+The component needs an RTK fix to start calibration (otherwise it goes into `NO_RTK_FIX` mode), then it will go into `CALIBRATING` state, until the platform moves `calibration_dist_min` in a straight line. After calibration is done the component can be in either `GPS_HEADING` state or `GYRO_HEADING` state. As soon as the platform stops or does a point turn the component goes into `GYRO_HEADING` state where it only considers the gyroscope heading. Once the platform moves at least a distance of `dist_min` meters it goes into `GPS_HEADING` where it fuses the GPS heading and the gyroscope.
 
 ![GPS heading evaluating heading from current and previous GPS readings](gps_heading.png "GPS heading")
 
@@ -18,7 +18,9 @@ Affiliation: Automation and Robotics Laboratories, ESTEC, ESA**
 
 ### Dependencies
 
-This package does not have any dependencies.
+This package depends on the following packages:
+
+* [drivers/orogen/gnss_trimble](https://github.com/rock-drivers/drivers-orogen-gnss_trimble)
 
 ### Building
 
@@ -37,45 +39,23 @@ Execute the following to build the package:
 
 #### Inputs
 
-* **`gps_pose_samples`** (/base/samples/RigidBodyState)
-
-GPS readings.
-
-* **`imu_pose_samples`** (/base/samples/RigidBodyState)
-
-Uncompensated input pose of the IMU.
-
-* **`motion_command`** (/base/MotionCommand2D)
-
-Rover motion control commands.
+* **`gps_pose_samples`** (/base/samples/RigidBodyState) - GPS readings.
+* **`imu_pose_samples`** (/base/samples/RigidBodyState) - Uncompensated input pose of the IMU.
+* **`motion_command`** (/base/MotionCommand2D) - Rover motion control commands.
 
 #### Outputs
 
-* **`pose_samples_out`** (/base/samples/RigidBodyState)
-
-GPS positions with filtered orientation.
-
-* **`heading_drift`** (/double)
-
-Estimated drift of the heading.
+* **`pose_samples_out`** (/base/samples/RigidBodyState) - GPS positions with filtered orientation.
+* **`heading_drift`** (/double) - Estimated drift of the heading.
 
 #### Parameters
 
-* **`alpha`** (/double)
+* **`alpha`** (/double) - Complementary filter weight, a value of 0 means only the gyroscope is taken in account, a value of 1 means only the GPS heading is considered. A value 0.1 is a good compromise.
+* **`dist_min`** (/double) - Minimum distance to travel between yaw updates (in meters).
+* **`calibration_dist_min`** (/double) - Minimum distance to travel for the first heading estimation (calibration), should be higher than `dist_min`.
+* **`ready`** (/bool) - Flag indicating if the component is ready, by default set to `false`, after calibration automatically set to `true`.
+* **`offset`** (/base/Vector3d) - GPS position offset (x, y, z) with regards to the platform it is mounted on. `Vector3d` format must be set in the configuration file as follows:
 
-Complementary filter weight.
-
-* **`dist_min`** (/double)
-
-Minimum distance to travel between yaw updates (in meters).
-
-* **`calibration_dist_min`** (/double)
-
-Minimum distance to travel for the first heading estimation (calibration), should be higher than `dist_min`.
-
-* **`offset`** (/base/Vector3d)
-
-GPS position offset (x, y, z) with regards to the platform it is mounted on. `Vector3d` format must be set in the configuration file as follows:
 
     offset:
       data:

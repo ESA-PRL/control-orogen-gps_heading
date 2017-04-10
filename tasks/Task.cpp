@@ -49,17 +49,23 @@ bool Task::configureHook()
     {
         return false;
     }
+
     imu_initialized = false;
     gps_initialized = false;
     gps_new_sample  = false;
     calibrated = false;
     driving_forward = false;
+
     dist_min  = _dist_min.value();
     dist_min *=  dist_min; // Squared
     calibration_dist_min = _calibration_dist_min.value();
     calibration_dist_min *= calibration_dist_min; // Squared
-    gps_fix = false;
+
+    rtk_fix = false;
+    using_gps_heading = false;
     gps_offset = _offset.value();
+    alpha = _alpha.value();
+
     return true;
 }
 bool Task::startHook()
@@ -75,37 +81,21 @@ void Task::updateHook()
     TaskBase::updateHook();
 
     //----- Read new inputs -----
-    gnss_trimble::Solution gps_raw_data;
-    if(_gps_raw_data.readNewest(gps_raw_data) == RTT::NewData)
+    if(_gps_raw_data.connected())
     {
-        gps_fix = (gps_raw_data.positionType == gnss_trimble::RTK_FIXED);
-    }
-
-    //----- Calibration state swiching routine -----
-    if(!gps_fix)
-    {
-        if(state() != NO_GPS_FIX)
+        if(_gps_raw_data.readNewest(gps_raw_data) == RTT::NewData)
         {
-            state(NO_GPS_FIX);
+            rtk_fix = (gps_raw_data.positionType == gnss_trimble::RTK_FIXED);
         }
     }
-    else if(!calibrated && gps_fix)
+    else if(!rtk_fix)
     {
-        if(state() != CALIBRATING)
-        {
-            state(CALIBRATING);
-        }
-    }
-    else if(calibrated && state() != RUNNING)
-    {
-        // Once calibrated switch to running state
-        state(RUNNING);
+        // If the GPS raw data port is not connected force the flag to true
+        rtk_fix = true;
     }
 
-    base::samples::RigidBodyState pose;
-    if(_imu_pose_samples.readNewest(pose) == RTT::NewData)
+    if(_imu_pose_samples.readNewest(imu_pose) == RTT::NewData)
     {
-        imu_pose = pose;
         if(!imu_initialized)
         {
             yawImuPrev = imu_pose.getYaw();
@@ -114,9 +104,8 @@ void Task::updateHook()
         }
     }
 
-    if(_gps_pose_samples.readNewest(pose) == RTT::NewData)
+    if(_gps_pose_samples.readNewest(gps_pose) == RTT::NewData)
     {
-        gps_pose = pose;
         gps_new_sample = true;
         if(!gps_initialized)
         {
@@ -133,7 +122,7 @@ void Task::updateHook()
         {
             // Make sure the rover is moving forwards, translation is 0.0 when doing a point turn
             // also only check for positive forwards motion as backwards would make the code unnecessarily complicated
-            driving_forward = motion_command.translation > 0.01;
+            driving_forward = motion_command.translation > 0.0f;
         }
     }
     else
@@ -145,7 +134,7 @@ void Task::updateHook()
 
     //----- Heading estimation -----
     /* Create uncompensated attitude estimate:
-    1) Keep roll & pitch angles  from IMU orientation
+    1) Keep roll & pitch angles from IMU orientation
     2) Get deltaYaw from the IMU orientation
     3) Yaw(k) = Yaw(k-1) + deltaYaw;
     */
@@ -162,7 +151,7 @@ void Task::updateHook()
         // Compensation step using GPS readings, only used when driving forward and GPS had an RTK fix
         // During calibration (heading setting) one can stop the rover, but (should) not turn it
         // This is a special case for the one stops with the rover during initialisation, otherwise it will reset the starting position
-        if((driving_forward && gps_fix) || (!driving_forward && gps_fix && !calibrated))
+        if((driving_forward && rtk_fix) || (!driving_forward && rtk_fix && !calibrated))
         {
             Eigen::Vector3d deltaPos = gps_pose.position - gps_pose_prev.position;
             // Ignore vertical distance delta
@@ -183,12 +172,11 @@ void Task::updateHook()
                     // The first yaw output will be 100% GPS based to calibrate the initial value
                     yawCompensated = yawGps;
                     calibrated = true;
+                    _ready.value() = true;
                 }
                 else
                 {
                     // Complementary filter
-                    double alpha = _alpha.value();
-
                     // Difference between current compensated estimate and new GPS-based heading
                     deltaYaw = deltaHeading(yawGps, yawCompensated);
 
@@ -206,6 +194,7 @@ void Task::updateHook()
                 heading_drift *= 180.0/M_PI;
                 _heading_drift.write(heading_drift);
                 //std::cout << "Estimated heading drift: " << heading_drift << "deg." << std::endl;
+                using_gps_heading = true;
             }
         }
         else
@@ -213,16 +202,13 @@ void Task::updateHook()
             // "Not driving_forward" resets the previous pose in every interation
             // Avoids taking two gps samples with a point turn in between.
             gps_pose_prev = gps_pose;
+            using_gps_heading = false;
         }
 
         // Output pose estimate
         base::samples::RigidBodyState resulting_pose;
         resulting_pose.time = gps_pose.time;
-        double roll, pitch;
-        roll    = imu_pose.getRoll();
-        pitch   = imu_pose.getPitch();
-
-        // TODO: here the position of the antenna could be roll/pitch compensated
+        // Set the position as the GPS position
         resulting_pose.position = gps_pose.position;
 
         if(!calibrated)
@@ -238,6 +224,9 @@ void Task::updateHook()
             resulting_pose.position.z() += gps_offset(2);
         }
 
+        double roll, pitch;
+        roll = imu_pose.getRoll();
+        pitch = imu_pose.getPitch();
         resulting_pose.orientation = Eigen::Quaterniond(
             Eigen::AngleAxisd(wrapAngle(yawCompensated), Eigen::Vector3d::UnitZ())*
             Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY())*
@@ -245,6 +234,24 @@ void Task::updateHook()
 
         _pose_samples_out.write(resulting_pose);
         gps_new_sample = false;
+    }
+
+    // Conponent state changes
+    if(!rtk_fix)
+    {
+        state(NO_RTK_FIX);
+    }
+    else if(!calibrated && rtk_fix)
+    {
+        state(CALIBRATING);
+    }
+    else if(calibrated && using_gps_heading)
+    {
+        state(GPS_HEADING);
+    }
+    else if(calibrated && !using_gps_heading)
+    {
+        state(GYRO_HEADING);
     }
 }
 
