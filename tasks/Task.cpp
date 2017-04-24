@@ -225,8 +225,8 @@ void Task::updateHook()
         }
 
         double roll, pitch;
-        roll = imu_pose.getRoll();
-        pitch = imu_pose.getPitch();
+        roll = -imu_pose.getRoll();
+        pitch = -imu_pose.getPitch();
         resulting_pose.orientation = Eigen::Quaterniond(
             Eigen::AngleAxisd(wrapAngle(yawCompensated), Eigen::Vector3d::UnitZ())*
             Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY())*
