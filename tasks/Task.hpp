@@ -47,6 +47,7 @@ namespace gps_heading {
         base::Vector3d gps_offset;
         double alpha;
 
+        double headingOffset;
         double deltaHeading(double yaw, double yaw_prev);
         inline double wrapAngle(double angle);
 

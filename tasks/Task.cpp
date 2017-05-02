@@ -65,6 +65,7 @@ bool Task::configureHook()
     using_gps_heading = false;
     gps_offset = _offset.value();
     alpha = _alpha.value();
+    headingOffset = _heading_offset.value() * M_PI / 180.0f;
 
     return true;
 }
@@ -87,12 +88,12 @@ void Task::updateHook()
         //if(_gps_raw_data.read(gps_raw_data) == RTT::NewData)
         {
             rtk_fix = (gps_raw_data.positionType == gnss_trimble::RTK_FIXED);
-            printf("gps_heading: RTK status update: %d\n", rtk_fix);
+            //printf("gps_heading: RTK status update: %d\n", rtk_fix);
         }
     }
     else if(!rtk_fix)
     {
-        printf("gps_heading: RTK not connected\n");
+        //printf("gps_heading: RTK not connected\n");
         // If the GPS raw data port is not connected force the flag to true
         rtk_fix = true;
     }
@@ -100,7 +101,7 @@ void Task::updateHook()
     if(_imu_pose_samples.readNewest(imu_pose) == RTT::NewData)
     //if(_imu_pose_samples.read(imu_pose) == RTT::NewData)
     {
-        printf("gps_heading: IMU update\n");
+        //printf("gps_heading: IMU update\n");
         if(!imu_initialized)
         {
             yawImuPrev = imu_pose.getYaw();
@@ -112,7 +113,7 @@ void Task::updateHook()
     if(_gps_pose_samples.readNewest(gps_pose) == RTT::NewData)
     //if(_gps_pose_samples.read(gps_pose) == RTT::NewData)
     {
-        printf("gps_heading: GPS update\n");
+        //printf("gps_heading: GPS update\n");
         gps_new_sample = true;
         if(!gps_initialized)
         {
@@ -131,12 +132,12 @@ void Task::updateHook()
             // Make sure the rover is moving forwards, translation is 0.0 when doing a point turn
             // also only check for positive forwards motion as backwards would make the code unnecessarily complicated
             driving_forward = motion_command.translation > 0.0f;
-            printf("gps_heading: Motion command update, driving forward status: %d\n", driving_forward);
+            //printf("gps_heading: Motion command update, driving forward status: %d\n", driving_forward);
         }
     }
     else
     {
-        printf("gps_heading: Motion command not commented\n");
+        //printf("gps_heading: Motion command not commented\n");
         // Without motion command input, the GPS compensation is attempted
         // regardless of the type of the motion
         driving_forward = true;
@@ -158,14 +159,14 @@ void Task::updateHook()
         // Prediction step, integration of delta Yaw
         yawCompensated += deltaYaw;
         
-        printf("gps_heading: Processing data new data...\n");
+        //printf("gps_heading: Processing data new data...\n");
 
         // Compensation step using GPS readings, only used when driving forward and GPS had an RTK fix
         // During calibration (heading setting) one can stop the rover, but (should) not turn it
         // This is a special case for the one stops with the rover during initialisation, otherwise it will reset the starting position
         if((driving_forward && rtk_fix) || (!driving_forward && rtk_fix && !calibrated))
         {
-            printf("gps_heading: Driving forward and RTK fix or calibrating state\n");
+            //printf("gps_heading: Driving forward and RTK fix or calibrating state\n");
             Eigen::Vector3d deltaPos = gps_pose.position - gps_pose_prev.position;
             // Ignore vertical distance delta
             deltaPos.z() = 0;
@@ -189,7 +190,7 @@ void Task::updateHook()
                 }
                 else
                 {
-                    printf("gps_heading: Applying GPS heading compensation\n");
+                    //printf("gps_heading: Applying GPS heading compensation\n");
                     
                     // Complementary filter
                     // Difference between current compensated estimate and new GPS-based heading
@@ -214,7 +215,7 @@ void Task::updateHook()
         }
         else
         {
-            printf("gps_heading: Not using GPS compensation\n");
+            //printf("gps_heading: Not using GPS compensation\n");
             // "Not driving_forward" resets the previous pose in every interation
             // Avoids taking two gps samples with a point turn in between.
             gps_pose_prev = gps_pose;
@@ -240,6 +241,9 @@ void Task::updateHook()
             resulting_pose.position.z() += gps_offset(2);
         }
 
+        // Add static heading offset
+        yawCompensated += headingOffset;
+
         double roll, pitch;
         roll = -imu_pose.getRoll();
         pitch = -imu_pose.getPitch();
@@ -247,8 +251,11 @@ void Task::updateHook()
             Eigen::AngleAxisd(wrapAngle(yawCompensated), Eigen::Vector3d::UnitZ())*
             Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY())*
             Eigen::AngleAxisd(roll,  Eigen::Vector3d::UnitX()));
+
+   	resulting_pose.sourceFrame = _gnss_source_frame.get();
+    	resulting_pose.targetFrame = _gnss_target_frame.get();
             
-        printf("gps_heading: Writing out gps_heading data\n");
+        //printf("gps_heading: Writing out gps_heading data\n");
         _pose_samples_out.write(resulting_pose);
         gps_new_sample = false;
     }

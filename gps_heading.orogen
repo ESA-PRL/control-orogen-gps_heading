@@ -15,6 +15,11 @@ task_context "Task" do
     property("calibration_dist_min", "double", 1.0).doc("Minimum distance to travel for the first heading estimation (calibration), should be higher than dist_min")
     property("offset", "/base/Vector3d").doc("GPS position offset with regards to the platform it is mounted on.")
     property("ready", "/bool", false).doc("State of usage readiness, by default false, set to true when calibrated.")
+    property("heading_offset", "/double", 0.0).doc("Static heading offset applied to the heading, value in degrees.")
+
+    property('gnss_source_frame', '/std/string').doc 'From Frame for the transformer'
+
+    property('gnss_target_frame', '/std/string').doc 'To Frame for the transformer'
 
     input_port("motion_command", "base/MotionCommand2D").doc("Motionc command to Locomotion Control")
     input_port("imu_pose_samples", "/base/samples/RigidBodyState").doc("Uncompensated input pose of the IMU")
