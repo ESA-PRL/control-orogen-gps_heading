@@ -126,13 +126,14 @@ void Task::updateHook()
     if(_motion_command.connected())
     {
         // TODO: also require the rover to be moving in an almost straight line for best GPS heading estimation
-        if(_motion_command.readNewest(motion_command) == RTT::NewData)
-        //if(_motion_command.read(motion_command) == RTT::NewData)
+        //    printf("gps_heading: Motion command update, driving forward staaaaaaaaaaaaaaaaaaaaatus: %d\n", driving_forward);
+        //if(_motion_command.readNewest(motion_command) == RTT::NewData)
+        if(_motion_command.read(motion_command) == RTT::NewData)
         {
             // Make sure the rover is moving forwards, translation is 0.0 when doing a point turn
             // also only check for positive forwards motion as backwards would make the code unnecessarily complicated
             driving_forward = motion_command.translation > 0.0f;
-            //printf("gps_heading: Motion command update, driving forward status: %d\n", driving_forward);
+        //    printf("gps_heading: Motion command update, driving forward status: %d\n", driving_forward);
         }
     }
     else
