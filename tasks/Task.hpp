@@ -38,8 +38,10 @@ namespace gps_heading {
     protected:
         base::samples::RigidBodyState gps_pose, gps_pose_prev;
         base::samples::RigidBodyState imu_pose;
-        double yawCompensated, yawImuPrev, dist_min, calibration_dist_min;
-        bool imu_initialized, gps_initialized, gps_new_sample, driving_forward, calibrated;
+        base::samples::RigidBodyState gyro_pose;
+        base::samples::RigidBodyState ground_truth_pose;
+        double yawCompensated, yawImu, yawImuPrev, yawGyro, yawGyroPrev, dist_min, calibration_dist_min;
+        bool imu_initialized, gps_initialized, gyro_initialized, gps_new_sample, driving_forward, calibrated;
         base::MotionCommand2D motion_command;
         gnss_trimble::Solution gps_raw_data;
         bool rtk_fix;

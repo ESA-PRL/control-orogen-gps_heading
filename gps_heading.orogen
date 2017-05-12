@@ -23,7 +23,9 @@ task_context "Task" do
 
     input_port("motion_command", "base/MotionCommand2D").doc("Motionc command to Locomotion Control")
     input_port("imu_pose_samples", "/base/samples/RigidBodyState").doc("Uncompensated input pose of the IMU")
+    input_port("gyro_pose_samples", "/base/samples/RigidBodyState").doc("Input pose of the Laser Gyro")
     input_port("gps_pose_samples", "/base/samples/RigidBodyState").doc("Input pose of the GPS antenna.")
+    input_port("ground_truth_pose_samples", "/base/samples/RigidBodyState").doc("Update of absolute pose coming from ground truth")
     input_port("gps_raw_data", "/gnss_trimble/Solution").doc("Raw value of GNSS/NMEA data.")
 
     output_port("pose_samples_out", "/base/samples/RigidBodyState").doc("Output pose")

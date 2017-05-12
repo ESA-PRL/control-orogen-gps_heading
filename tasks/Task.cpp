@@ -52,6 +52,7 @@ bool Task::configureHook()
 
     imu_initialized = false;
     gps_initialized = false;
+    gyro_initialized = false;
     gps_new_sample  = false;
     calibrated = false;
     driving_forward = false;
@@ -105,7 +106,7 @@ void Task::updateHook()
         if(!imu_initialized)
         {
             yawImuPrev = imu_pose.getYaw();
-            yawCompensated = yawImuPrev;
+            yawCompensated = yawImuPrev; //ToDo Check with Karl if this should be yawImu=yawImuPrev; and initialize yawCompensated in start/configure hook
             imu_initialized = true;
         }
     }
@@ -121,12 +122,31 @@ void Task::updateHook()
             gps_initialized = true;
         }
     }
+    
+    if(_gyro_pose_samples.readNewest(gyro_pose) == RTT::NewData)
+    //if(_gyro_pose_samples.read(gyro_pose) == RTT::NewData)
+    {
+        //printf("gps_heading: Gyro update\n");
+        if(!gyro_initialized)
+        {
+            yawGyroPrev = gyro_pose.getYaw();
+            //yawGyro = yawGyroPrev;
+            gyro_initialized = true;
+        }
+    }
+
+    if(_ground_truth_pose_samples.readNewest(ground_truth_pose) == RTT::NewData)
+    //if(_ground_truth_pose_samples.read(ground_truth_pose) == RTT::NewData)
+    {
+        //printf("gps_heading: Ground Truth update\n");
+        yawCompensated=ground_truth_pose.getYaw();
+    }
 
     // If the motion command is connected then only allow heading to be compensated with GPS when the rover is moving forwards (not point turning)
     if(_motion_command.connected())
     {
         // TODO: also require the rover to be moving in an almost straight line for best GPS heading estimation
-        //    printf("gps_heading: Motion command update, driving forward staaaaaaaaaaaaaaaaaaaaatus: %d\n", driving_forward);
+        //    printf("gps_heading: Motion command update, driving forward status: %d\n", driving_forward);
         //if(_motion_command.readNewest(motion_command) == RTT::NewData)
         if(_motion_command.read(motion_command) == RTT::NewData)
         {
@@ -150,12 +170,16 @@ void Task::updateHook()
     2) Get deltaYaw from the IMU orientation
     3) Yaw(k) = Yaw(k-1) + deltaYaw;
     */
-    if(imu_initialized && gps_initialized && gps_new_sample)
+    if(imu_initialized && gps_initialized && gyro_initialized && gps_new_sample)
     {
-        double deltaYaw, yawImu;
+        double deltaYaw; // yawImu; defined it in the hpp
         yawImu = imu_pose.getYaw();
         deltaYaw = deltaHeading(yawImu, yawImuPrev);
         yawImuPrev = yawImu;
+
+        yawGyro = gyro_pose.getYaw();
+        deltaYaw = deltaHeading(yawGyro, yawGyroPrev);
+        yawGyroPrev = yawGyro;
 
         // Prediction step, integration of delta Yaw
         yawCompensated += deltaYaw;
@@ -165,7 +189,8 @@ void Task::updateHook()
         // Compensation step using GPS readings, only used when driving forward and GPS had an RTK fix
         // During calibration (heading setting) one can stop the rover, but (should) not turn it
         // This is a special case for the one stops with the rover during initialisation, otherwise it will reset the starting position
-        if((driving_forward && rtk_fix) || (!driving_forward && rtk_fix && !calibrated))
+        //if((driving_forward && rtk_fix) || (!driving_forward && rtk_fix && !calibrated))
+        if (rtk_fix && !calibrated)
         {
             //printf("gps_heading: Driving forward and RTK fix or calibrating state\n");
             Eigen::Vector3d deltaPos = gps_pose.position - gps_pose_prev.position;
@@ -177,19 +202,20 @@ void Task::updateHook()
             // 1) Estimate the heading from GPS
             // 2) Compensate the heading estimate
             // WARNING: the dist_min is quared here, so comparing it to squaredNorm is OK
-            if((calibrated && deltaPos.squaredNorm() > dist_min) || (!calibrated && deltaPos.squaredNorm() > calibration_dist_min))
+            //if((calibrated && deltaPos.squaredNorm() > dist_min) || (!calibrated && deltaPos.squaredNorm() > calibration_dist_min))  
+            if (deltaPos.squaredNorm() > calibration_dist_min)
             {
                 // Get the yaw value from between 2 gps poses
                 double yawGps = atan2(deltaPos.y(), deltaPos.x());
 
-                if(!calibrated)
-                {
+                //if(!calibrated)
+                //{
                     // The first yaw output will be 100% GPS based to calibrate the initial value
                     yawCompensated = yawGps;
                     calibrated = true;
                     _ready.value() = true;
-                }
-                else
+                //}
+                /*else
                 {
                     //printf("gps_heading: Applying GPS heading compensation\n");
                     
@@ -204,14 +230,14 @@ void Task::updateHook()
 
                 // Save the new "previous" GPS position
                 gps_pose_prev = gps_pose;
-
+                */
                 // Heading drift debug output
                 double heading_drift;
                 heading_drift = deltaHeading(yawImu, wrapAngle(yawCompensated));
                 heading_drift *= 180.0/M_PI;
                 _heading_drift.write(heading_drift);
                 //std::cout << "Estimated heading drift: " << heading_drift << "deg." << std::endl;
-                using_gps_heading = true;
+                //using_gps_heading = true;
             }
         }
         else
@@ -253,7 +279,7 @@ void Task::updateHook()
             Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY())*
             Eigen::AngleAxisd(roll,  Eigen::Vector3d::UnitX()));
 
-   	resulting_pose.sourceFrame = _gnss_source_frame.get();
+      	resulting_pose.sourceFrame = _gnss_source_frame.get();
     	resulting_pose.targetFrame = _gnss_target_frame.get();
             
         //printf("gps_heading: Writing out gps_heading data\n");
