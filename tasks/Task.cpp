@@ -56,6 +56,8 @@ bool Task::configureHook()
     gps_new_sample  = false;
     calibrated = false;
     driving_forward = false;
+    stopped=false;
+    integrate_gyro=true;
 
     dist_min  = _dist_min.value();
     dist_min *=  dist_min; // Squared
@@ -67,6 +69,7 @@ bool Task::configureHook()
     gps_offset = _offset.value();
     alpha = _alpha.value();
     headingOffset = _heading_offset.value() * M_PI / 180.0f;
+    stopping_threshold = _stop_integrating_time.value() * 1000000;
 
     return true;
 }
@@ -154,6 +157,21 @@ void Task::updateHook()
             // also only check for positive forwards motion as backwards would make the code unnecessarily complicated
             driving_forward = motion_command.translation > 0.0f;
         //    printf("gps_heading: Motion command update, driving forward status: %d\n", driving_forward);
+            stopped = ((motion_command.translation == 0.0) && (motion_command.rotation == 0.0)); 
+            if (stopped)
+            {
+                base::Time time_stopped = base::Time::now() - last_time_moving;
+                std::cout << " time stopped: " << time_stopped << std::endl;
+                if (time_stopped>stopping_threshold)
+                {
+                    integrate_gyro=false;
+                }
+            }
+            else
+            {
+                last_time_moving = base::Time::now();
+                integrate_gyro=true;
+            }
         }
     }
     else
@@ -162,6 +180,8 @@ void Task::updateHook()
         // Without motion command input, the GPS compensation is attempted
         // regardless of the type of the motion
         driving_forward = true;
+        stopped=false;
+        integrate_gyro=true;
     }
 
     //----- Heading estimation -----
@@ -181,8 +201,11 @@ void Task::updateHook()
         deltaYaw = deltaHeading(yawGyro, yawGyroPrev);
         yawGyroPrev = yawGyro;
 
-        // Prediction step, integration of delta Yaw
-        yawCompensated += deltaYaw;
+        if (integrate_gyro)
+        {
+            // Prediction step, integration of delta Yaw
+            yawCompensated += deltaYaw;
+        }
         
         //printf("gps_heading: Processing data new data...\n");
 

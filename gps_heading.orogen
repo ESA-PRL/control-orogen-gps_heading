@@ -21,6 +21,7 @@ task_context "Task" do
 
     property('gnss_target_frame', '/std/string').doc 'To Frame for the transformer'
 
+    property("stop_integrating_time", "base/Time").doc("seconds after which the component should not continue integrating the gyro because it is in stopped state. Reduces drift.")
     input_port("motion_command", "base/MotionCommand2D").doc("Motionc command to Locomotion Control")
     input_port("imu_pose_samples", "/base/samples/RigidBodyState").doc("Uncompensated input pose of the IMU")
     input_port("gyro_pose_samples", "/base/samples/RigidBodyState").doc("Input pose of the Laser Gyro")
