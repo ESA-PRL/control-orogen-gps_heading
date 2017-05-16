@@ -48,7 +48,8 @@ namespace gps_heading {
         bool using_gps_heading;
         base::Vector3d gps_offset;
         double alpha;
-        base::Time last_time_moving, stopping_threshold;
+        base::Time last_time_moving;
+        int stopping_threshold;
 
         double headingOffset;
         double deltaHeading(double yaw, double yaw_prev);

@@ -69,7 +69,7 @@ bool Task::configureHook()
     gps_offset = _offset.value();
     alpha = _alpha.value();
     headingOffset = _heading_offset.value() * M_PI / 180.0f;
-    stopping_threshold = _stop_integrating_time.value() * 1000000;
+    stopping_threshold = _stop_integrating_time.value();
 
     return true;
 }
@@ -151,7 +151,7 @@ void Task::updateHook()
         // TODO: also require the rover to be moving in an almost straight line for best GPS heading estimation
         //    printf("gps_heading: Motion command update, driving forward status: %d\n", driving_forward);
         //if(_motion_command.readNewest(motion_command) == RTT::NewData)
-        if(_motion_command.read(motion_command) == RTT::NewData)
+        _motion_command.read(motion_command);
         {
             // Make sure the rover is moving forwards, translation is 0.0 when doing a point turn
             // also only check for positive forwards motion as backwards would make the code unnecessarily complicated
@@ -161,16 +161,18 @@ void Task::updateHook()
             if (stopped)
             {
                 base::Time time_stopped = base::Time::now() - last_time_moving;
-                std::cout << " time stopped: " << time_stopped << std::endl;
-                if (time_stopped>stopping_threshold)
+                //std::cout << " time stopped in seconds: " << time_stopped.toSeconds() << std::endl;
+                if (time_stopped.toSeconds()>stopping_threshold)
                 {
                     integrate_gyro=false;
+                    //std::cout << " Stopped for long time. Do not integrate gyro." << std::endl;
                 }
             }
             else
             {
                 last_time_moving = base::Time::now();
                 integrate_gyro=true;
+                //std::cout << " Moving. Integrating gyro." << std::endl;
             }
         }
     }
