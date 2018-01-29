@@ -42,7 +42,7 @@ namespace gps_heading {
         base::samples::RigidBodyState ground_truth_pose;
         double yawCompensated, yawImu, yawImuPrev, yawGyro, yawGyroPrev, dist_min, calibration_dist_min;
         bool imu_initialized, gps_initialized, gyro_initialized, gps_new_sample, driving_forward, stopped, calibrated, integrate_gyro;
-        base::MotionCommand2D motion_command;
+        base::commands::Motion2D motion_command;
         gnss_trimble::Solution gps_raw_data;
         bool rtk_fix;
         bool using_gps_heading;
