@@ -79,6 +79,10 @@ bool Task::startHook()
     {
         return false;
     }
+
+    if(!_gyro_pose_samples.connected())
+        gyro_initialized = true;
+
     return true;
 }
 void Task::updateHook()
